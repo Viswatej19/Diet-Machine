@@ -1,0 +1,8 @@
+OPENAI_API_KEY=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
+OPENAI_MODEL=gpt-4o-mini
+
+SUPABASE_URL=https://mgbmnqsiozswdblymzfp.supabase.co
+SUPABASE_KEY=sb_publishable__U_zFyJpRbzAGAvLpPMr2w_a1qhFPqU
+
+# Optional: use a stable user id for user_preferences rows.
+APP_USER_ID=local-user
