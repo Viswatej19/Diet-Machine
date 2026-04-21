@@ -33,29 +33,29 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     import streamlit as st
+    import os
     
-    # Base dictionary of keys to check
-    keys_map = {
-        "OPENAI_API_KEY": "openai_api_key",
-        "OPENAI_MODEL": "openai_model",
-        "SUPABASE_URL": "supabase_url",
-        "SUPABASE_KEY": "supabase_key",
-        "APP_USER_ID": "app_user_id"
-    }
-    
-    extracted_kwargs = {}
-    for env_key, kwarg_key in keys_map.items():
-        # 1. Try OS / Dotenv
-        val = os.getenv(env_key)
-        
-        # 2. Try Streamlit Secrets (for cloud deployment)
-        if not val:
-            try:
-                val = st.secrets.get(env_key)
-            except Exception:
-                pass
-                
-        if val is not None:
-            extracted_kwargs[kwarg_key] = val
+    def get_val(key_name: str) -> Optional[str]:
+        # 1. Intelligently attempt Streamlit Secrets first (Production Source of Truth)
+        try:
+            if key_name in st.secrets:
+                val = st.secrets[key_name]
+                if val:
+                    return str(val).strip()
+        except Exception:
+            pass
+            
+        # 2. Fall back to Local Environment Variables (.env)
+        val = os.getenv(key_name)
+        if val:
+            return str(val).strip()
+            
+        return None
 
-    return Settings(**extracted_kwargs)
+    return Settings(
+        openai_api_key=get_val("OPENAI_API_KEY"),
+        openai_model=get_val("OPENAI_MODEL") or "gpt-4o-mini",
+        supabase_url=get_val("SUPABASE_URL"),
+        supabase_key=get_val("SUPABASE_KEY"),
+        app_user_id=get_val("APP_USER_ID") or "local-user",
+    )
