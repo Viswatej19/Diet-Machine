@@ -73,18 +73,25 @@ def auth_ui(db: Database) -> None:
     st.markdown("### Sign in to continue")
     st.divider()
 
-    # Google login
-    if st.button("🔵  Continue with Google", use_container_width=True):
-        try:
-            response = db.sign_in_with_google()
-            url = getattr(response, "url", None)
-            if url:
-                # Use st.markdown injected HTML to strictly force same-tab routing
-                st.markdown(f'<meta http-equiv="refresh" content="0; url={url}">', unsafe_allow_html=True)
-            else:
-                st.warning("Google login unavailable — use email login.")
-        except Exception:
-            st.warning("Google login failed. Use email login.")
+    # Google login - Rendered as an exact HTML anchor to prevent Google 403 meta-refresh blocks
+    try:
+        response = db.sign_in_with_google()
+        url = getattr(response, "url", None)
+        if url:
+            st.markdown(
+                f'''
+                <a href="{url}" target="_self" style="display: block; width: 100%; text-align: center; 
+                padding: 10px; background-color: #2F3336; color: white; border-radius: 8px; 
+                text-decoration: none; font-weight: 500; border: 1px solid #4B5563; margin-bottom: 15px;">
+                🔵 Continue with Google
+                </a>
+                ''',
+                unsafe_allow_html=True
+            )
+        else:
+            st.warning("Google login unavailable — use email login.")
+    except Exception:
+        st.warning("Google login failed. Use email login.")
 
     st.divider()
 
