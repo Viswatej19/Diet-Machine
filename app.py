@@ -630,7 +630,7 @@ def recipe_maker_page() -> None:
                     return
                 
                 # 2. Strict Database Macro Calculation (No AI guessing)
-                nutrition = calculate_nutrition(validation.valid_ingredients, db)
+                nutrition = run_async(calculate_nutrition(validation.valid_ingredients, db))
                 ingredient_string = ", ".join([f"{item.quantity} {item.unit} {item.name}" for item in validation.valid_ingredients])
                 
                 nutrition_dict = {

@@ -286,10 +286,10 @@ class Database:
         user_id = user_id or self.settings.app_user_id
         payload = {
             "user_id": user_id,
-            "calorie_target": preferences.calorie_target,
-            "protein_target": preferences.protein_target,
+            "calorie_target": int(preferences.calorie_target),
+            "protein_target": int(preferences.protein_target),
             "diet_type": preferences.diet_type,
-            "weight": preferences.weight,
+            "weight": float(preferences.weight) if preferences.weight else None,
             "goal": preferences.goal,
         }
         try:
@@ -325,9 +325,9 @@ class Database:
             return
         payload = {
             "user_id": user_id,
-            "calories": calories,
-            "protein": protein,
-            "fiber": fiber or 30,
+            "calories": int(calories),
+            "protein": int(protein),
+            "fiber": int(fiber) if fiber else 30,
         }
         try:
             self.client.table("user_goals").upsert(payload, on_conflict="user_id").execute()
