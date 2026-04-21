@@ -2,6 +2,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
+import os
+
 from dotenv import load_dotenv
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -30,4 +32,30 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    import streamlit as st
+    
+    # Base dictionary of keys to check
+    keys_map = {
+        "OPENAI_API_KEY": "openai_api_key",
+        "OPENAI_MODEL": "openai_model",
+        "SUPABASE_URL": "supabase_url",
+        "SUPABASE_KEY": "supabase_key",
+        "APP_USER_ID": "app_user_id"
+    }
+    
+    extracted_kwargs = {}
+    for env_key, kwarg_key in keys_map.items():
+        # 1. Try OS / Dotenv
+        val = os.getenv(env_key)
+        
+        # 2. Try Streamlit Secrets (for cloud deployment)
+        if not val:
+            try:
+                val = st.secrets.get(env_key)
+            except Exception:
+                pass
+                
+        if val is not None:
+            extracted_kwargs[kwarg_key] = val
+
+    return Settings(**extracted_kwargs)
