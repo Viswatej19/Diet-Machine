@@ -29,20 +29,17 @@ class AIMeal(BaseModel):
 class AIDailyDiet(BaseModel):
     meals: list[AIMeal]
     
+class AIIndependentIngredient(BaseModel):
+    name: str
+    grams: int
+
 class AIIndependentRecipe(BaseModel):
     title: str
-    calories: float
-    protein: float
     prep_time_minutes: int
+    ingredients: list[AIIndependentIngredient]
     steps: list[str]
-    
-class AINutritionEstimate(BaseModel):
-    calories: float
-    protein: float
-    fiber: float
 
 class AIIndependentRecipeList(BaseModel):
-    nutrition_estimate: AINutritionEstimate
     recipes: list[AIIndependentRecipe]
 
 class AIFoodMacro(BaseModel):
@@ -135,22 +132,23 @@ class OpenAIService:
             prompt
         )
 
-    async def generate_independent_recipe(self, raw_text: str, targets: dict, diet_type: str) -> AIIndependentRecipeList:
+    async def generate_independent_recipe(self, parsed_ingredients: str, nutrition: dict) -> AIIndependentRecipeList:
         if not self.available:
             raise RuntimeError("OpenAI client missing")
             
         prompt = (
-            f"The user wants a recipe using loosely these ingredients: '{raw_text}'.\n"
-            f"Diet type constraint: {diet_type}.\n"
-            f"Goal targets context: {targets['calories']} cal, {targets['protein']} protein.\n\n"
-            "1. Estimate the total nutrition (Calories, Protein, Fiber) based on standard cooking amounts of these items.\n"
-            "2. Provide 2 distinct, protein-optimized recipes combining these ingredients sensibly.\n"
-            "3. Feel free to assume basic pantry staples (spices, light oil, water) exist."
+            f"STRICT MODE: The user provided exactly these validated ingredients: {parsed_ingredients}\n"
+            f"Exact Database Macros computed: {nutrition['calories']} kcal, {nutrition['protein']}g protein.\n\n"
+            "CRITICAL RULES:\n"
+            "1. NO ADDITIONS AND NO SUBSTITUTIONS. You MUST use ONLY the exact given ingredients in their exact given grams. Never invent foods like 'chickpeas' or 'oil' unless explicitly provided.\n"
+            "2. GRAM-LEVEL PRECISION. Output each ingredient mapped strictly to its integer 'grams'. Example: {'name': 'paneer', 'grams': 100}.\n"
+            "3. MACRO ACCURACY. Do not provide a macro block. Just output the exact requested items and steps.\n"
+            "4. Combine these mathematically bound ingredients into 2 sensible recipes. Spices and water can be assumed in steps but do not list them as tracked ingredients."
         )
         return await self._structured_call(
             AIIndependentRecipeList,
             "independent_recipe_maker",
-            "You are a master chef creating recipes independently of any database.",
+            "You are a strict, deterministic recipe engine bounded by absolute database ingredients.",
             prompt
         )
 

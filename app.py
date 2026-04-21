@@ -32,9 +32,15 @@ MEAL_TYPES = ["breakfast", "lunch", "dinner", "snacks"]
 # ─────────────────────────────────────────────────────────────────────────────
 
 @st.cache_resource
-def get_app_services():
+def get_stateless_services():
     settings = get_settings()
-    return settings, Database(settings), OpenAIService(settings)
+    return settings, OpenAIService(settings)
+
+def get_app_services():
+    settings, ai = get_stateless_services()
+    if "db" not in st.session_state:
+        st.session_state.db = Database(settings)
+    return settings, st.session_state.db, ai
 
 
 def set_page(name: str) -> None:
@@ -73,7 +79,8 @@ def auth_ui(db: Database) -> None:
             response = db.sign_in_with_google()
             url = getattr(response, "url", None)
             if url:
-                st.link_button("Open Google Login →", url, use_container_width=True)
+                # Use st.markdown injected HTML to strictly force same-tab routing
+                st.markdown(f'<meta http-equiv="refresh" content="0; url={url}">', unsafe_allow_html=True)
             else:
                 st.warning("Google login unavailable — use email login.")
         except Exception:
@@ -611,30 +618,52 @@ def recipe_maker_page() -> None:
             st.error("Please enter ingredients first")
             return
             
-        with st.spinner("Creating recipes..."):
-            goals = db.get_goals(user_id)
-            targets = calculate_goal_targets(goals) if goals else {"calories": 2000, "protein": 100, "fiber": 30}
-            
+        with st.spinner("Creating strictly mapped recipes..."):
             try:
+                # 1. Deterministic Input Parsing against Database (with AI Hydration for missing items)
+                validation = run_async(parse_and_validate_ingredients(input_text, db, ai))
+                if validation.errors:
+                    for err in validation.errors:
+                        st.warning(err)
+                if not validation.valid_ingredients:
+                    st.error("No valid ingredients found to build a recipe.")
+                    return
+                
+                # 2. Strict Database Macro Calculation (No AI guessing)
+                nutrition = calculate_nutrition(validation.valid_ingredients, db)
+                ingredient_string = ", ".join([f"{item.quantity} {item.unit} {item.name}" for item in validation.valid_ingredients])
+                
+                nutrition_dict = {
+                    "calories": nutrition.total_calories,
+                    "protein": nutrition.total_protein,
+                    "carbs": nutrition.total_carbs,
+                    "fats": nutrition.total_fats,
+                    "fiber": nutrition.total_fiber
+                }
+
                 recipe_result = run_async(
                     ai.generate_independent_recipe(
-                        raw_text=input_text,
-                        targets=targets,
-                        diet_type=preferences.diet_type
+                        parsed_ingredients=ingredient_string,
+                        nutrition=nutrition_dict,
                     )
                 )
                 
-                est = recipe_result.nutrition_estimate
                 col1, col2, col3 = st.columns(3)
-                col1.metric("Est. Calories", f"{est.calories:.0f} kcal")
-                col2.metric("Est. Protein", f"{est.protein:.1f} g")
-                col3.metric("Est. Fiber", f"{est.fiber:.1f} g")
+                col1.metric("DB Exact Calories", f"{nutrition.total_calories:.0f} kcal")
+                col2.metric("DB Exact Protein", f"{nutrition.total_protein:.1f} g")
+                col3.metric("DB Exact Fiber", f"{nutrition.total_fiber:.1f} g")
 
-                st.subheader("Generated Recipes")
+                st.subheader("Generated Deterministic Recipes")
                 for recipe in recipe_result.recipes:
                     with st.container(border=True):
                         st.subheader(recipe.title)
-                        st.caption(f"{recipe.calories:.0f} kcal | {recipe.protein:.1f}g protein | {recipe.prep_time_minutes} min")
+                        st.caption(f"{nutrition.total_calories:.0f} kcal | {nutrition.total_protein:.1f}g protein | {recipe.prep_time_minutes} min")
+                        
+                        st.markdown("**Ingredients**")
+                        for ing in recipe.ingredients:
+                            st.write(f"- {ing.grams}g {ing.name.title()}")
+                            
+                        st.markdown("**Steps**")
                         for idx, step in enumerate(recipe.steps, 1):
                             st.write(f"{idx}. {step}")
             except Exception as e:

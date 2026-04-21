@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     supabase_url: Optional[str] = Field(default=None, alias="SUPABASE_URL")
     supabase_key: Optional[str] = Field(default=None, alias="SUPABASE_KEY")
     app_user_id: str = Field(default="local-user", alias="APP_USER_ID")
+    app_url: str = Field(default="http://localhost:8501/", alias="APP_URL")
 
     model_config = SettingsConfigDict(extra="ignore")
 
@@ -58,4 +59,5 @@ def get_settings() -> Settings:
         supabase_url=get_val("SUPABASE_URL"),
         supabase_key=get_val("SUPABASE_KEY"),
         app_user_id=get_val("APP_USER_ID") or "local-user",
+        app_url=get_val("APP_URL") or "https://dietmaker.streamlit.app/",
     )
