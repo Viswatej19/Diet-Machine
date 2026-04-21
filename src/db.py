@@ -48,8 +48,7 @@ class Database:
         if not self.client:
             return None
         return self.client.auth.sign_in_with_oauth({
-            "provider": "google",
-            "options": {"redirect_to": self.settings.app_url}
+            "provider": "google"
         })
 
     def exchange_code_for_session(self, code: str):
