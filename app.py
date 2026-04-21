@@ -80,7 +80,7 @@ def auth_ui(db: Database) -> None:
         if url:
             st.markdown(
                 f'''
-                <a href="{url}" target="_self" style="display: block; width: 100%; text-align: center; 
+                <a href="{url}" target="_top" style="display: block; width: 100%; text-align: center; 
                 padding: 10px; background-color: #2F3336; color: white; border-radius: 8px; 
                 text-decoration: none; font-weight: 500; border: 1px solid #4B5563; margin-bottom: 15px;">
                 🔵 Continue with Google
